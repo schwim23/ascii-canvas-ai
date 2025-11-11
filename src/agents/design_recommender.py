@@ -33,16 +33,16 @@ class SystemDesign(BaseModel):
 class DesignRecommenderAgent:
     """AI Agent that recommends system designs based on text descriptions"""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4"):
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         """
         Initialize the Design Recommender Agent
         
         Args:
             api_key: OpenAI API key (defaults to OPENAI_API_KEY env var)
-            model: OpenAI model to use
+            model: OpenAI model to use (defaults to DESIGN_MODEL env var or gpt-4o)
         """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.model = model or os.getenv("DESIGN_MODEL", "gpt-4")
+        self.model = model or os.getenv("DESIGN_MODEL", "gpt-4o")
         self.client = OpenAI(api_key=self.api_key)
         
     def recommend_design(self, user_description: str) -> SystemDesign:

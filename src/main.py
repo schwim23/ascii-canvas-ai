@@ -10,6 +10,9 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
 from rich.markdown import Markdown
+from rich.syntax import Syntax
+from rich.tree import Tree
+import json
 
 from agents.design_recommender import DesignRecommenderAgent, SystemDesign
 from agents.ascii_artist import AsciiArtistAgent
@@ -73,6 +76,45 @@ def save_diagram(diagram: str, filename: Optional[str] = None):
     console.print(f"\n[green]✓ Diagram saved to: {output_path}[/green]")
 
 
+def display_agent_communication(description: str, system_design: SystemDesign):
+    """Display agent-to-agent communication in a formatted way"""
+    console.print("\n" + "="*70)
+    console.print("[bold magenta]🔍 AGENT-TO-AGENT COMMUNICATION[/bold magenta]")
+    console.print("="*70 + "\n")
+    
+    # Show input to Design Agent
+    console.print(Panel(
+        f"[dim]User Description:[/dim]\n\n{description}",
+        title="📥 Input to Design Agent (Agent 1)",
+        border_style="blue",
+        expand=False
+    ))
+    
+    console.print("\n[yellow]↓[/yellow]\n")
+    
+    # Show Design Agent's output
+    design_json = json.dumps(system_design.model_dump(), indent=2)
+    syntax = Syntax(design_json, "json", theme="monokai", line_numbers=True)
+    console.print(Panel(
+        syntax,
+        title="📤 Output from Design Agent (Structured Design)",
+        border_style="green",
+        expand=False
+    ))
+    
+    console.print("\n[yellow]↓[/yellow]\n")
+    
+    # Show transfer to ASCII Agent
+    tree = Tree("[bold cyan]📨 Data Transfer to ASCII Agent (Agent 2)[/bold cyan]")
+    tree.add(f"[green]✓[/green] Title: {system_design.title}")
+    tree.add(f"[green]✓[/green] Components: {len(system_design.components)} items")
+    tree.add(f"[green]✓[/green] Connections: {len(system_design.connections)} items")
+    tree.add(f"[green]✓[/green] Notes: {len(system_design.notes)} items")
+    console.print(tree)
+    
+    console.print("\n" + "="*70 + "\n")
+
+
 def interactive_mode():
     """Run the application in interactive mode"""
     display_banner()
@@ -82,6 +124,9 @@ def interactive_mode():
         console.print("[red]Error: OPENAI_API_KEY not found in environment[/red]")
         console.print("Please set it in your .env file or environment variables")
         sys.exit(1)
+    
+    # Ask if user wants to see agent communication
+    verbose_mode = Confirm.ask("\n[bold]Would you like to see agent-to-agent communication?[/bold]", default=False)
     
     # Initialize agents
     console.print("\n[cyan]Initializing AI agents...[/cyan]")
@@ -106,6 +151,10 @@ def interactive_mode():
     except Exception as e:
         console.print(f"[red]Error generating design: {e}[/red]")
         return
+    
+    # Show agent communication if verbose mode is enabled
+    if verbose_mode:
+        display_agent_communication(description, system_design)
     
     # Display system design
     console.print("\n" + "="*70)

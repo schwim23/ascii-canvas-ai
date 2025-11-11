@@ -8,16 +8,16 @@ from anthropic import Anthropic
 class AsciiArtistAgent:
     """AI Agent that converts system designs into beautiful ASCII diagrams"""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "claude-3-opus-20240229"):
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         """
         Initialize the ASCII Artist Agent
         
         Args:
             api_key: Anthropic API key (defaults to ANTHROPIC_API_KEY env var)
-            model: Claude model to use
+            model: Claude model to use (defaults to ASCII_MODEL env var or claude-sonnet-4-5-20250929)
         """
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
-        self.model = model or os.getenv("ASCII_MODEL", "claude-3-opus-20240229")
+        self.model = model or os.getenv("ASCII_MODEL", "claude-sonnet-4-5-20250929")
         self.client = Anthropic(api_key=self.api_key)
         
     def create_ascii_diagram(self, system_design: dict, style: str = "detailed") -> str:
