@@ -1,0 +1,14 @@
+I need to build a scalable e-commerce platform for selling products online.
+
+The system should support:
+- User authentication and profile management
+- Product catalog with search and filtering
+- Shopping cart functionality
+- Payment processing with multiple payment methods
+- Order management and tracking
+- Email notifications for orders
+- Admin dashboard for managing products and orders
+
+The platform needs to handle high traffic during sales events and should be
+designed for scalability and reliability. We expect to integrate with
+third-party services for payments (Stripe/PayPal) and shipping providers.
