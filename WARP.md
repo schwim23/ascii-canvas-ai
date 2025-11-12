@@ -133,8 +133,8 @@ Required:
 
 Optional:
 - `ANTHROPIC_API_KEY`: Used by ASCII Agent for better diagram quality
-- `DESIGN_MODEL`: Override default OpenAI model (default: gpt-4)
-- `ASCII_MODEL`: Override default Claude model (default: claude-3-opus-20240229)
+- `DESIGN_MODEL`: Override default OpenAI model (default: gpt-4o)
+- `ASCII_MODEL`: Override default Claude model (default: claude-sonnet-4-5))
 
 ### Working with Diagrams
 
