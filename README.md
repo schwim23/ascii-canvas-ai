@@ -149,8 +149,8 @@ ascii-canvas-ai/
 
 - `OPENAI_API_KEY` - Required for design generation
 - `ANTHROPIC_API_KEY` - Optional, recommended for best ASCII art quality
-- `DESIGN_MODEL` - OpenAI model to use (default: gpt-4)
-- `ASCII_MODEL` - Claude model to use (default: claude-3-opus-20240229)
+- `DESIGN_MODEL` - OpenAI model to use (default: gpt-4o)
+- `ASCII_MODEL` - Claude model to use (default: claude-sonnet-4-5-20250929)
 
 ### Diagram Styles
 
