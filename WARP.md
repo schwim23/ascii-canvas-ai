@@ -71,7 +71,7 @@ The application uses two specialized AI agents that work sequentially:
    - **Model**: Anthropic Claude Opus (configurable via `ASCII_MODEL` env var)
    - **Role**: Converts structured system designs into visual ASCII art diagrams
    - **Styles**: Supports "detailed", "compact", and "flowchart" styles
-   - **Fallback**: Automatically falls back to OpenAI GPT-4 if Anthropic API unavailable
+   - **Fallback**: Automatically falls back to OpenAI GPT-4o if Anthropic API unavailable
    - **Key Method**: `create_ascii_diagram(system_design_dict, style)` → `str`
 
 ### Data Models (Pydantic)
@@ -134,7 +134,7 @@ Required:
 Optional:
 - `ANTHROPIC_API_KEY`: Used by ASCII Agent for better diagram quality
 - `DESIGN_MODEL`: Override default OpenAI model (default: gpt-4o)
-- `ASCII_MODEL`: Override default Claude model (default: claude-sonnet-4-5))
+- `ASCII_MODEL`: Override default Claude model (default: claude-sonnet-4-5)
 
 ### Working with Diagrams
 
