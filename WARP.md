@@ -23,11 +23,34 @@ cp .env.example .env
 # Interactive mode (primary usage)
 python src/main.py
 
+# Interactive mode will prompt you to choose:
+# 1. Describe manually - Enter text description of your system
+# 2. Scan AWS account - Automatically discover AWS infrastructure
+
 # Batch mode with input file
 python src/main.py examples/ecommerce.txt
 
 # Batch mode with output file
 python src/main.py examples/ecommerce.txt output.txt
+```
+
+### AWS CLI Setup (for AWS Scanning)
+```bash
+# Install AWS CLI (if not already installed)
+# macOS:
+brew install awscli
+# Linux/Windows: https://aws.amazon.com/cli/
+
+# Configure AWS credentials (Option 1: IAM credentials)
+aws configure
+# You'll need: Access Key ID, Secret Access Key, Region
+
+# Configure AWS credentials (Option 2: SSO)
+aws configure sso
+aws sso login
+
+# Verify authentication
+aws sts get-caller-identity
 ```
 
 ### Testing & Code Quality
@@ -43,19 +66,26 @@ black src/
 
 ## Architecture Overview
 
-ASCII Canvas AI is a **dual-agent system** that generates system architecture diagrams from natural language descriptions. The architecture follows a sequential pipeline pattern where each agent has a specialized role.
+ASCII Canvas AI is a **multi-agent system** that generates system architecture diagrams from either natural language descriptions or by automatically scanning AWS infrastructure. The architecture follows a sequential pipeline pattern where each agent has a specialized role.
 
-### Core Architecture Pattern
+### Core Architecture Patterns
 
+**Pattern 1: Manual Description**
 ```
 User Description → Design Agent → System Design (Pydantic) → ASCII Agent → ASCII Diagram
                         ↑                                         ↑
                         └─────── Refinement Loop ─────────────────┘
 ```
 
+**Pattern 2: AWS Infrastructure Scanning**
+```
+AWS Account → AWS Scanner Agent → System Design (Pydantic) → ASCII Agent → ASCII Diagram
+              (AWS CLI)                                        ↑
+```
+
 ### Agent System
 
-The application uses two specialized AI agents that work sequentially:
+The application uses three specialized agents:
 
 1. **Design Recommender Agent** (`src/agents/design_recommender.py`)
    - **Model**: OpenAI GPT-4 (configurable via `DESIGN_MODEL` env var)
@@ -67,8 +97,27 @@ The application uses two specialized AI agents that work sequentially:
    - **Key Method**: `recommend_design(user_description)` → `SystemDesign`
    - **Refinement**: `refine_design(current_design, feedback)` → `SystemDesign`
 
-2. **ASCII Artist Agent** (`src/agents/ascii_artist.py`)
-   - **Model**: Anthropic Claude Opus (configurable via `ASCII_MODEL` env var)
+2. **AWS Scanner Agent** (`src/agents/aws_scanner.py`) ⭐ NEW
+   - **Model**: None (uses AWS CLI commands, not AI-based)
+   - **Role**: Discovers AWS infrastructure by executing AWS CLI commands and maps resources to SystemDesign
+   - **Scanned Resources**:
+     - EC2 instances → `service` components
+     - RDS databases → `database` components
+     - Lambda functions → `function` components
+     - S3 buckets → `storage` components
+     - Load Balancers (ALB/NLB) → `load_balancer` components
+     - SQS queues → `queue` components
+     - ElastiCache clusters → `cache` components
+     - API Gateway → `api` components
+     - ECS services → `service` components
+   - **Connection Inference**: Automatically infers connections based on common AWS patterns
+   - **Authentication**: Checks AWS CLI installation and guides users through authentication
+   - **Key Methods**: 
+     - `scan_aws_infrastructure()` → executes AWS CLI commands
+     - `convert_to_system_design()` → `SystemDesign`
+
+3. **ASCII Artist Agent** (`src/agents/ascii_artist.py`)
+   - **Model**: Anthropic Claude Sonnet (configurable via `ASCII_MODEL` env var)
    - **Role**: Converts structured system designs into visual ASCII art diagrams
    - **Styles**: Supports "detailed", "compact", and "flowchart" styles
    - **Fallback**: Automatically falls back to OpenAI GPT-4o if Anthropic API unavailable
@@ -87,13 +136,20 @@ These models serve as the contract between the two agents and ensure data consis
 ### Main Application Flow (`src/main.py`)
 
 **Interactive Mode** (default):
-1. Display banner and initialize both agents
-2. Get multiline system description from user
-3. Call Design Agent to generate `SystemDesign`
-4. Display design to user with option to refine
-5. If refinement requested, loop back to Design Agent
-6. Call ASCII Agent with user's chosen style
-7. Display diagram with option to save to `outputs/` directory
+1. Display banner and ask user to choose input method (describe manually or scan AWS)
+2. **If Manual Description**:
+   - Get multiline system description from user
+   - Call Design Agent to generate `SystemDesign`
+   - Display design to user with option to refine
+   - If refinement requested, loop back to Design Agent
+3. **If AWS Scan**:
+   - Initialize AWS Scanner Agent
+   - Check AWS CLI installation and authentication status
+   - Guide user through authentication if needed
+   - Scan AWS resources across multiple services
+   - Convert discovered resources to `SystemDesign`
+4. Call ASCII Agent with user's chosen style
+5. Display diagram with option to save to `outputs/` directory
 
 **Batch Mode** (with file argument):
 - Reads system description from file
@@ -105,6 +161,9 @@ These models serve as the contract between the two agents and ensure data consis
 - **API Key Validation**: Checks for `OPENAI_API_KEY` before initialization
 - **Anthropic Fallback**: If Anthropic API fails, automatically retries with OpenAI
 - **Model Configuration**: Both models are configurable via environment variables for flexibility
+- **AWS CLI Validation**: Checks if AWS CLI is installed before scanning
+- **AWS Authentication**: Verifies AWS authentication and guides users through setup if needed
+- **Graceful Degradation**: AWS scanner handles missing permissions and empty accounts gracefully
 
 ### File Organization
 
@@ -113,6 +172,7 @@ src/
 ├── main.py                      # CLI application, user interaction, orchestration
 └── agents/
     ├── design_recommender.py    # OpenAI-based design generation
+    ├── aws_scanner.py           # AWS CLI-based infrastructure discovery
     └── ascii_artist.py          # Claude/OpenAI-based ASCII diagram generation
 ```
 
@@ -151,3 +211,32 @@ Core dependencies (from requirements.txt):
 - `pydantic>=2.0.0`: Type validation and data models
 - `rich>=13.0.0`: Terminal UI (panels, prompts, colors)
 - `python-dotenv>=1.0.0`: Environment configuration
+- `boto3>=1.28.0`: AWS SDK (optional, currently using AWS CLI directly)
+
+### AWS Scanning Details
+
+The AWS Scanner Agent executes the following AWS CLI commands:
+- `aws ec2 describe-instances` - Discovers EC2 instances
+- `aws rds describe-db-instances` - Discovers RDS databases
+- `aws lambda list-functions` - Discovers Lambda functions
+- `aws s3api list-buckets` - Discovers S3 buckets
+- `aws elbv2 describe-load-balancers` - Discovers ALB/NLB
+- `aws sqs list-queues` - Discovers SQS queues
+- `aws elasticache describe-cache-clusters` - Discovers ElastiCache
+- `aws apigateway get-rest-apis` - Discovers API Gateway
+- `aws ecs list-clusters` + `describe-services` - Discovers ECS services
+
+**Connection Inference Logic**:
+The scanner infers connections between components based on common AWS architecture patterns:
+- Load Balancers → EC2/ECS services
+- Services → Databases
+- Services → Cache clusters
+- Services → SQS queues
+- API Gateway → Lambda functions
+- Services → S3 storage
+
+**Important Notes**:
+- Only scans a single AWS region (configurable)
+- Only includes running/active resources
+- Connections are inferred, not derived from actual network analysis
+- Requires appropriate IAM permissions for read-only access to AWS services

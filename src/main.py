@@ -16,6 +16,7 @@ import json
 
 from agents.design_recommender import DesignRecommenderAgent, SystemDesign
 from agents.ascii_artist import AsciiArtistAgent
+from agents.aws_scanner import AwsScannerAgent
 
 
 console = Console()
@@ -128,32 +129,76 @@ def interactive_mode():
     # Ask if user wants to see agent communication
     verbose_mode = Confirm.ask("\n[bold]Would you like to see agent-to-agent communication?[/bold]", default=False)
     
-    # Initialize agents
-    console.print("\n[cyan]Initializing AI agents...[/cyan]")
-    design_agent = DesignRecommenderAgent()
-    ascii_agent = AsciiArtistAgent()
+    # Ask user to choose input method
+    console.print("\n[bold]How would you like to provide system information?[/bold]\n")
+    console.print("1. [cyan]Describe manually[/cyan] - Enter a text description of your system")
+    console.print("2. [cyan]Scan AWS account[/cyan] - Automatically discover AWS infrastructure\n")
     
-    console.print("[green]✓ Agents ready![/green]\n")
-    
-    # Get user's system description
-    description = get_multiline_input(
-        "📝 Describe your system or application:"
+    input_method = Prompt.ask(
+        "Choose input method",
+        choices=["1", "2", "describe", "aws"],
+        default="1"
     )
     
-    if not description.strip():
-        console.print("[red]No description provided. Exiting.[/red]")
-        return
+    # Normalize input
+    if input_method in ["1", "describe"]:
+        input_method = "describe"
+    else:
+        input_method = "aws"
     
-    # Generate system design
-    console.print("\n[cyan]🤖 Agent 1: Analyzing your description and designing system architecture...[/cyan]")
-    try:
-        system_design = design_agent.recommend_design(description)
-    except Exception as e:
-        console.print(f"[red]Error generating design: {e}[/red]")
-        return
+    # Initialize agents
+    console.print("\n[cyan]Initializing AI agents...[/cyan]")
+    ascii_agent = AsciiArtistAgent()
     
-    # Show agent communication if verbose mode is enabled
-    if verbose_mode:
+    system_design = None
+    description = None
+    
+    if input_method == "describe":
+        # Manual description flow
+        design_agent = DesignRecommenderAgent()
+        console.print("[green]✓ Agents ready![/green]\n")
+        
+        # Get user's system description
+        description = get_multiline_input(
+            "📝 Describe your system or application:"
+        )
+        
+        if not description.strip():
+            console.print("[red]No description provided. Exiting.[/red]")
+            return
+        
+        # Generate system design
+        console.print("\n[cyan]🤖 Agent 1: Analyzing your description and designing system architecture...[/cyan]")
+        try:
+            system_design = design_agent.recommend_design(description)
+        except Exception as e:
+            console.print(f"[red]Error generating design: {e}[/red]")
+            return
+    
+    else:
+        # AWS scanning flow
+        console.print("[green]✓ ASCII Artist agent ready![/green]")
+        console.print("[cyan]Initializing AWS Scanner agent...[/cyan]\n")
+        
+        aws_scanner = AwsScannerAgent()
+        
+        # Scan AWS infrastructure
+        console.print("[cyan]🔍 Scanning AWS infrastructure...[/cyan]\n")
+        
+        if not aws_scanner.scan_aws_infrastructure():
+            console.print("[red]AWS scan failed. Exiting.[/red]")
+            return
+        
+        # Convert to system design
+        console.print("[cyan]🤖 Converting AWS resources to system design...[/cyan]")
+        try:
+            system_design = aws_scanner.convert_to_system_design()
+        except Exception as e:
+            console.print(f"[red]Error converting AWS resources: {e}[/red]")
+            return
+    
+    # Show agent communication if verbose mode is enabled (only for describe mode)
+    if verbose_mode and input_method == "describe" and description:
         display_agent_communication(description, system_design)
     
     # Display system design
@@ -180,15 +225,18 @@ def interactive_mode():
     
     console.print("="*70 + "\n")
     
-    # Ask if user wants to refine design
-    if Confirm.ask("Would you like to refine this design?", default=False):
+    # Ask if user wants to refine design (only for describe mode)
+    if input_method == "describe" and Confirm.ask("Would you like to refine this design?", default=False):
         feedback = get_multiline_input("What would you like to change?")
         console.print("\n[cyan]🤖 Refining design...[/cyan]")
         system_design = design_agent.refine_design(system_design, feedback)
         console.print("[green]✓ Design updated![/green]\n")
     
     # Generate ASCII diagram
-    console.print("[cyan]🎨 Agent 2: Creating ASCII art diagram...[/cyan]")
+    if input_method == "describe":
+        console.print("[cyan]🎨 Agent 2: Creating ASCII art diagram...[/cyan]")
+    else:
+        console.print("[cyan]🎨 Creating ASCII art diagram...[/cyan]")
     
     style = Prompt.ask(
         "Choose diagram style",
